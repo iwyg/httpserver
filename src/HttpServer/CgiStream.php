@@ -1,4 +1,5 @@
 <?php
+
 namespace HttpServer;
 
 /*
@@ -10,7 +11,7 @@ namespace HttpServer;
  * This allows the server to be notified via stream_select() when the CGI output is ready, rather than waiting
  * until the CGI process completes.
  */
-class CGIStream
+class CgiStream
 {
     public $context;
 
