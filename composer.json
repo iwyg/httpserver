@@ -17,11 +17,6 @@
         "php-cgi": "HTTPServer requires the php-cgi binary."
     },
     "autoload": {
-        "classmap": [
-            "cgistream.php",
-            "httprequest.php",
-            "httpresponse.php",
-            "httpserver.php"
-        ]
+        "psr-0": {"HttpServer":"src/"}
     }
 }

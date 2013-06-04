@@ -8,7 +8,7 @@ namespace HttpServer;
  * http://github.com/youngj/httpserver
  */
 
-class HTTPResponse
+class HttpResponse
 {
     public $status;                 // HTTP status code
     public $status_msg;             // HTTP status message
@@ -23,70 +23,62 @@ class HTTPResponse
     public $buffer = '';            // buffer of HTTP response waiting to be written to client socket
     public $bytes_written = 0;      // count of bytes written to client socket
 
-    function __construct($status = 200, $content = '', $headers = null, $status_msg = null)
+    public function __construct($status = 200, $content = '', $headers = null, $status_msg = null)
     {
         $this->status = $status;
         $this->status_msg = $status_msg;
 
-        if (is_resource($content))
-        {
+        if (is_resource($content)) {
             $this->stream = $content;
-        }
-        else
-        {
+        } else {
             $this->content = $content;
         }
         $this->headers = $headers ?: array();
     }
 
-    function eof()
+    public function eof()
     {
         return !strlen($this->buffer) && $this->stream_eof();
     }
 
-    function stream_eof()
+    public function stream_eof()
     {
         return !$this->stream || feof($this->stream);
     }
 
-    static function render_status($status, $status_msg = null)
+    public static function render_status($status, $status_msg = null)
     {
         // Per RFC2616 6.1.1 we pass on a status message from the provider if
         // provided, otherwise we use the standard message for that code.
-        if (empty($status_msg))
-        {
+        if (empty($status_msg)) {
             $status_msg = static::$status_messages[$status];
         }
+
         return "HTTP/1.1 $status $status_msg\r\n";
     }
 
-    static function render_headers($headers)
+    public static function render_headers($headers)
     {
         ob_start();
-        foreach ($headers as $name => $values)
-        {
-            if (is_array($values))
-            {
-                foreach ($values as $value)
-                {
+        foreach ($headers as $name => $values) {
+            if (is_array($values)) {
+                foreach ($values as $value) {
                     echo "$name: $value\r\n";
                 }
-            }
-            else
-            {
+            } else {
                 echo "$name: $values\r\n";
             }
         }
         echo "\r\n";
+
         return ob_get_clean();
     }
 
-    function render()
+    public function render()
     {
         $headers =& $this->headers;
 
-        if (!isset($headers['Content-Length']))
-        {
+        if (!isset($headers['Content-Length'])) {
             $headers['Content-Length'] = [$this->get_content_length()];
         }
 
@@ -95,13 +87,13 @@ class HTTPResponse
                 $this->content;
     }
 
-    function get_content_length()
+    public function get_content_length()
     {
         // only valid if content is supplied as a string
         return strlen($this->content);
     }
 
-    static $status_messages = array(
+    public static $status_messages = array(
         100 => "Continue",
         101 => "Switching Protocols",
         200 => "OK",

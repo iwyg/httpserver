@@ -33,12 +33,12 @@ class CGIStream
      * We read the CGI response into a stream of type data:// so that stream_select
      * knows when we have more data for it.
      */
-    function stream_cast($cast_as)
+    public function stream_cast($cast_as)
     {
         return ($this->cur_state == static::BUFFERING) ? $this->stream : $this->buffer_stream;
     }
 
-    function stream_open($path, $mode, $options, &$opened_path)
+    public function stream_open($path, $mode, $options, &$opened_path)
     {
         $options = stream_context_get_options($this->context);
 
@@ -61,8 +61,7 @@ class CGIStream
             )
         );
 
-        if (!is_resource($proc))
-        {
+        if (!is_resource($proc)) {
             return false;
         }
 
@@ -74,10 +73,9 @@ class CGIStream
         return true;
     }
 
-    function stream_read($count)
+    public function stream_read($count)
     {
-        switch ($this->cur_state)
-        {
+        switch ($this->cur_state) {
             case static::BUFFERING:
                 $buffer =& $this->buffer;
 
@@ -85,13 +83,11 @@ class CGIStream
                 // non-blocking pipes don't work in PHP on Windows, and stream_select doesn't know when the pipe has data
                 $data = fread($this->stream, $count);
 
-                if ($data !== false)
-                {
+                if ($data !== false) {
                     $buffer .= $data;
 
                     // need to wait until CGI is finished to determine Content-Length
-                    if (!feof($this->stream))
-                    {
+                    if (!feof($this->stream)) {
                         return '';
                     }
                 }
@@ -102,24 +98,18 @@ class CGIStream
                 // also, need to add Content-Length header for HTTP keep-alive
 
                 $end_response_headers = strpos($buffer, "\r\n\r\n");
-                if ($end_response_headers === false)
-                {
+                if ($end_response_headers === false) {
                     $response = $this->server->text_response(502, "Invalid Response from CGI process");
-                }
-                else
-                {
+                } else {
                     $headers_str = substr($buffer, 0, $end_response_headers);
                     $headers = HTTPServer::parse_headers($headers_str);
 
-                    if (isset($headers['Status']))
-                    {
+                    if (isset($headers['Status'])) {
                         $status_arr = explode(' ', $headers['Status'][0], 2);
                         $status = (int) $status_arr[0];
                         $status_msg = trim($status_arr[1]);
                         unset($headers['Status']);
-                    }
-                    else
-                    {
+                    } else {
                         $status = 200;
                         $status_msg = null;
                     }
@@ -146,22 +136,23 @@ class CGIStream
             case static::BUFFERED:
                 $res = fread($this->buffer_stream, $count);
 
-                if (feof($this->buffer_stream))
-                {
+                if (feof($this->buffer_stream)) {
                     $this->cur_state = static::EOF;
                 }
+
                 return $res;
             case static::EOF;
+
                 return false;
         }
     }
 
-    function stream_eof()
+    public function stream_eof()
     {
         return $this->cur_state == static::EOF;
     }
 
-    function stream_close()
+    public function stream_close()
     {
         proc_close($this->proc);
         $this->proc = null;
@@ -169,8 +160,7 @@ class CGIStream
         fclose($this->stream);
         $this->stream = null;
 
-        if ($this->buffer_stream)
-        {
+        if ($this->buffer_stream) {
             fclose($this->buffer_stream);
             $this->buffer_stream = null;
         }

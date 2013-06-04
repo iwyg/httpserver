@@ -7,7 +7,7 @@ namespace HttpServer;
  * Released under MIT license; see LICENSE.txt
  * http://github.com/youngj/httpserver
  */
-class HTTPRequest
+class HttpRequest
 {
     public $method;             // HTTP method, e.g. "GET" or "POST"
     public $request_uri;        // original requested URI, with query string
@@ -45,27 +45,23 @@ class HTTPRequest
     public $socket;
     public $response;
 
-    function __construct($socket)
+    public function __construct($socket)
     {
         $this->socket = $socket;
         $this->content_stream = fopen("data://text/plain,", 'r+b');
 
         $remote_name = stream_socket_get_name($socket, true);
-        if ($remote_name)
-        {
+        if ($remote_name) {
             $port_pos = strrpos($remote_name, ":");
-            if ($port_pos)
-            {
+            if ($port_pos) {
                 $this->remote_addr = substr($remote_name, 0, $port_pos);
-            }
-            else
-            {
+            } else {
                 $this->remote_addr = $remote_name;
             }
         }
     }
 
-    function cleanup()
+    public function cleanup()
     {
         fclose($this->content_stream);
         $this->content_stream = null;
@@ -74,13 +70,11 @@ class HTTPRequest
     /*
      * Reads a chunk of a HTTP request from a client socket.
      */
-    function add_data($data)
+    public function add_data($data)
     {
-        switch ($this->cur_state)
-        {
+        switch ($this->cur_state) {
             case static::READ_HEADERS:
-                if (!$this->start_time)
-                {
+                if (!$this->start_time) {
                     $this->start_time = microtime(true);
                 }
 
@@ -89,8 +83,7 @@ class HTTPRequest
                 $header_buf .= $data;
 
                 $end_headers = strpos($header_buf, "\r\n\r\n", 4);
-                if ($end_headers === false)
-                {
+                if ($end_headers === false) {
                     break;
                 }
 
@@ -114,23 +107,19 @@ class HTTPRequest
                 $this->headers = HTTPServer::parse_headers($headers_str);
 
                 $this->lc_headers = array();
-                foreach ($this->headers as $k => $v)
-                {
+                foreach ($this->headers as $k => $v) {
                     $this->lc_headers[strtolower($k)] = $v;
                 }
 
-                if (isset($this->lc_headers['transfer-encoding']))
-                {
+                if (isset($this->lc_headers['transfer-encoding'])) {
                     $this->is_chunked = $this->lc_headers['transfer-encoding'][0] == 'chunked';
 
                     unset($this->lc_headers['transfer-encoding']);
                     unset($this->headers['Transfer-Encoding']);
 
                     $this->content_len = 0;
-                }
-                else
-                {
-                    $this->content_len = (int)@$this->lc_headers['content-length'][0];
+                } else {
+                    $this->content_len = (int) @$this->lc_headers['content-length'][0];
                 }
 
                 $start_content = $end_headers + 4; // $end_headers is before last \r\n\r\n
@@ -143,17 +132,13 @@ class HTTPRequest
                 // fallthrough to READ_CONTENT with leftover data
             case static::READ_CONTENT:
 
-                if ($this->is_chunked)
-                {
+                if ($this->is_chunked) {
                     $this->read_chunked_data($data);
-                }
-                else
-                {
+                } else {
                     fwrite($this->content_stream, $data);
                     $this->content_len_read += strlen($data);
 
-                    if ($this->content_len - $this->content_len_read <= 0)
-                    {
+                    if ($this->content_len - $this->content_len_read <= 0) {
                         $this->cur_state = static::READ_COMPLETE;
                     }
                 }
@@ -162,13 +147,12 @@ class HTTPRequest
                 break;
         }
 
-        if ($this->cur_state == static::READ_COMPLETE)
-        {
+        if ($this->cur_state == static::READ_COMPLETE) {
             fseek($this->content_stream, 0);
         }
     }
 
-    function read_chunked_data($data)
+    public function read_chunked_data($data)
     {
         $content_stream =& $this->content_stream;
         $chunk_header_buf =& $this->chunk_header_buf;
@@ -178,8 +162,7 @@ class HTTPRequest
 
         while (isset($data[0])) // keep processing chunks until we run out of data
         {
-            switch ($chunk_state)
-            {
+            switch ($chunk_state) {
                 case static::READ_CHUNK_HEADER:
                     $chunk_header_buf .= $data;
                     $data = "";
@@ -202,8 +185,7 @@ class HTTPRequest
                     $data = substr($chunk_header_buf, $end_chunk_header + 2);
                     $chunk_header_buf = '';
 
-                    if ($chunk_len_remaining == 0)
-                    {
+                    if ($chunk_len_remaining == 0) {
                         $this->cur_state = static::READ_COMPLETE;
                         $this->headers['Content-Length'] = $this->lc_headers['content-length'] = [$this->content_len];
 
@@ -213,12 +195,9 @@ class HTTPRequest
 
                     // fallthrough to READ_CHUNK_DATA with leftover data
                 case static::READ_CHUNK_DATA:
-                    if (strlen($data) > $chunk_len_remaining)
-                    {
+                    if (strlen($data) > $chunk_len_remaining) {
                         $chunk_data = substr($data, 0, $chunk_len_remaining);
-                    }
-                    else
-                    {
+                    } else {
                         $chunk_data = $data;
                     }
 
@@ -227,8 +206,7 @@ class HTTPRequest
                     $data = substr($data, $chunk_len_remaining);
                     $chunk_len_remaining -= strlen($chunk_data);
 
-                    if ($chunk_len_remaining == 0)
-                    {
+                    if ($chunk_len_remaining == 0) {
                         $chunk_trailer_remaining = 2;
                         $chunk_state = static::READ_CHUNK_TRAILER;
                     }
@@ -239,8 +217,7 @@ class HTTPRequest
                     $data = substr($data, $len_to_read);
                     $chunk_trailer_remaining -= $len_to_read;
 
-                    if ($chunk_trailer_remaining == 0)
-                    {
+                    if ($chunk_trailer_remaining == 0) {
                         $chunk_state = static::READ_CHUNK_HEADER;
                     }
 
@@ -252,7 +229,7 @@ class HTTPRequest
     /*
      * Returns the value of a HTTP header from this request (case-insensitive)
      */
-    function get_header($name)
+    public function get_header($name)
     {
         return @$this->lc_headers[strtolower($name)][0];
     }
@@ -260,7 +237,7 @@ class HTTPRequest
     /*
      * Returns true if a full HTTP request has been read by add_data().
      */
-    function is_read_complete()
+    public function is_read_complete()
     {
         return $this->cur_state == static::READ_COMPLETE;
     }
@@ -268,7 +245,7 @@ class HTTPRequest
     /*
      * Sets a HTTPResponse object associated with this request
      */
-    function set_response($response)
+    public function set_response($response)
     {
         $this->response = $response;
     }
